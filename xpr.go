@@ -31,6 +31,7 @@ type Progress struct {
 	interval          time.Duration
 	startTime         time.Time
 	event             Event
+	canceled          bool
 }
 
 func New(total int64) *Progress {
@@ -38,6 +39,14 @@ func New(total int64) *Progress {
 	p.SetTotal(total)
 	p.SetInterval(time.Second)
 	return &p
+}
+
+func (p *Progress) Cancel() {
+	p.canceled = true
+}
+
+func (p *Progress) Canceled() bool {
+	return p.canceled
 }
 
 func (p *Progress) SetEvent(event Event) {
@@ -110,7 +119,7 @@ func (p *Progress) Start() {
 				p.event(p)
 				p.syncPrevious()
 			}
-			if p.Finished() {
+			if p.Finished() || p.Canceled() {
 				ticker.Stop()
 			}
 		}
