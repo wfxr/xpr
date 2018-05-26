@@ -107,7 +107,7 @@ func (p *Progress) ETA() time.Duration {
 }
 
 func (p *Progress) EDA() time.Time {
-	return time.Now().Add(time.Duration(float64(p.Remain())/p.Speed()) * time.Second)
+	return time.Now().Add(p.ETA())
 }
 
 func (p *Progress) Start() {
