@@ -31,7 +31,7 @@ type Progress struct {
 	interval          time.Duration
 	startTime         time.Time
 	event             Event
-	canceled          bool
+	ticker            *time.Ticker
 }
 
 func New(total int64) *Progress {
@@ -41,12 +41,15 @@ func New(total int64) *Progress {
 	return &p
 }
 
-func (p *Progress) Cancel() {
-	p.canceled = true
+func (p *Progress) FireEvent() {
+	if p.event != nil {
+		p.event(p)
+		p.syncPrevious()
+	}
 }
 
-func (p *Progress) Canceled() bool {
-	return p.canceled
+func (p *Progress) Silent() {
+	p.ticker.Stop()
 }
 
 func (p *Progress) SetEvent(event Event) {
@@ -87,6 +90,10 @@ func (p *Progress) Inc() {
 
 func (p *Progress) Add(count int64) {
 	atomic.AddInt64(&(p.curr), count)
+	if p.Finished() {
+		p.Silent()
+		p.FireEvent()
+	}
 }
 
 func (p *Progress) Percent() float64 {
@@ -111,17 +118,13 @@ func (p *Progress) EDA() time.Time {
 }
 
 func (p *Progress) Start() {
+	p.event(p)
+
 	p.startTime = time.Now()
-	ticker := time.NewTicker(p.interval)
+	p.ticker = time.NewTicker(p.interval)
 	go func() {
-		for _ = range ticker.C {
-			if p.event != nil {
-				p.event(p)
-				p.syncPrevious()
-			}
-			if p.Finished() || p.Canceled() {
-				ticker.Stop()
-			}
+		for _ = range p.ticker.C {
+			p.FireEvent()
 		}
 	}()
 }
